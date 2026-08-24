@@ -1,4 +1,4 @@
-﻿using Flow.Launcher.Plugin;
+using Flow.Launcher.Plugin;
 using GamesLauncher.Common;
 using GamesLauncher.Platforms.SyncEngines.Common.Interfaces;
 
@@ -76,9 +76,40 @@ namespace GamesLauncher.Platforms.SyncEngines
                     }
                 }
             }
+            else if (fileInfo.Extension == ".lnk")
+            {
+                // CORRECTION DU BUG: Pour les raccourcis .lnk, extraire l'exécutable cible
+                var targetPath = GetLnkTargetPath(fileInfo.FullName);
+                if (!string.IsNullOrEmpty(targetPath) && File.Exists(targetPath))
+                {
+                    return targetPath; // Utiliser l'exécutable cible comme source d'icône
+                }
+            }
 
             return fileInfo.FullName;
         }
 
+        private static string? GetLnkTargetPath(string lnkFilePath)
+        {
+            try
+            {
+                // Utiliser COM (WScript.Shell) pour lire les propriétés du raccourci
+                // Cela permet d'extraire le chemin de l'exécutable cible du .lnk
+                dynamic shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell"));
+                dynamic shortcut = shell.CreateShortcut(lnkFilePath);
+                string targetPath = shortcut.TargetPath;
+                
+                // Libérer les ressources COM correctement
+                System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shortcut);
+                System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell);
+                
+                return targetPath;
+            }
+            catch (Exception ex)
+            {
+                // Fallback si COM échoue - retourner null et laisser le code gérer
+                return null;
+            }
+        }
     }
 }
