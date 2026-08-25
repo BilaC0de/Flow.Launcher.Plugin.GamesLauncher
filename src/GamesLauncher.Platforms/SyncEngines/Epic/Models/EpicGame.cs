@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
 
 namespace GamesLauncher.Platforms.SyncEngines.Epic.Models
 {
@@ -27,8 +27,11 @@ namespace GamesLauncher.Platforms.SyncEngines.Epic.Models
             if (displayName == null || catalogNamespace == null || catalogItemId == null || appName == null || manifestLocation == null)
                 return null;
 
-            if (jObject.Value<string?>("MainGameCatalogItemId") != catalogItemId) // If this is an addon/DLC mainGameCatalogItemId and catalogItemId will be different
-                return null;
+            // CORRECTION DU BUG: Si MainGameCatalogItemId est rempli ET différent de catalogItemId, c'est un addon/DLC
+            // Si MainGameCatalogItemId est vide/null, c'est le jeu principal → on le garde
+            var mainGameCatalogItemId = jObject.Value<string?>("MainGameCatalogItemId");
+            if (!string.IsNullOrEmpty(mainGameCatalogItemId) && mainGameCatalogItemId != catalogItemId)
+                return null; // Si c'est un addon/DLC mainGameCatalogItemId et catalogItemId seront différents
 
             if (jObject.Value<bool?>("bIsIncompleteInstall") == true) // If game installation is not completed this flag is true
                 return null;
