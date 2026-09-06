@@ -72,21 +72,51 @@ namespace GamesLauncher.Platforms.SyncEngines
                 {
                     if (line.Trim().StartsWith("IconFile="))
                     {
-                        return line.Replace("IconFile=", "").Trim();
+                        var iconPath = line.Replace("IconFile=", "").Trim();
+                        // Remplacer les variables d'environnement
+                        return Environment.ExpandEnvironmentVariables(iconPath);
                     }
                 }
             }
             else if (fileInfo.Extension == ".lnk")
             {
-                // CORRECTION DU BUG: Pour les raccourcis .lnk, extraire l'exécutable cible
+                // D'abord, vérifier s'il y a une IconLocation personnalisée définie
+                var iconLocation = GetLnkIconLocation(fileInfo.FullName);
+                if (!string.IsNullOrEmpty(iconLocation) && File.Exists(iconLocation))
+                {
+                    return Environment.ExpandEnvironmentVariables(iconLocation);
+                }
+
+                // Si pas d'IconLocation, extraire l'exécutable cible
                 var targetPath = GetLnkTargetPath(fileInfo.FullName);
                 if (!string.IsNullOrEmpty(targetPath) && File.Exists(targetPath))
                 {
-                    return targetPath; // Utiliser l'exécutable cible comme source d'icône
+                    return Environment.ExpandEnvironmentVariables(targetPath);
                 }
             }
 
             return fileInfo.FullName;
+        }
+
+        private static string? GetLnkIconLocation(string lnkFilePath)
+        {
+            try
+            {
+                // Utiliser COM (WScript.Shell) pour lire les propriétés du raccourci
+                dynamic shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell"));
+                dynamic shortcut = shell.CreateShortcut(lnkFilePath);
+                string iconLocation = shortcut.IconLocation;
+                
+                // Libérer les ressources COM
+                System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shortcut);
+                System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell);
+                
+                return string.IsNullOrEmpty(iconLocation) ? null : iconLocation;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static string? GetLnkTargetPath(string lnkFilePath)
@@ -94,20 +124,18 @@ namespace GamesLauncher.Platforms.SyncEngines
             try
             {
                 // Utiliser COM (WScript.Shell) pour lire les propriétés du raccourci
-                // Cela permet d'extraire le chemin de l'exécutable cible du .lnk
                 dynamic shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell"));
                 dynamic shortcut = shell.CreateShortcut(lnkFilePath);
                 string targetPath = shortcut.TargetPath;
                 
-                // Libérer les ressources COM correctement
+                // Libérer les ressources COM
                 System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shortcut);
                 System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell);
                 
                 return targetPath;
             }
-            catch (Exception ex)
+            catch
             {
-                // Fallback si COM échoue - retourner null et laisser le code gérer
                 return null;
             }
         }
