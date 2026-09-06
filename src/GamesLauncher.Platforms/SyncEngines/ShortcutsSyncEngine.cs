@@ -86,8 +86,11 @@ namespace GamesLauncher.Platforms.SyncEngines
                 var iconLocation = GetLnkIconLocation(fileInfo.FullName);
                 if (!string.IsNullOrEmpty(iconLocation))
                 {
-                    // CORRECTION: Remplacer les variables d'environnement AVANT de vérifier si le fichier existe
-                    var expandedIconPath = Environment.ExpandEnvironmentVariables(iconLocation);
+                    // CORRECTION: Gérer le format "chemin\fichier.exe,index"
+                    // Extraire juste le chemin du fichier (avant la virgule)
+                    var iconFilePath = iconLocation.Split(',')[0].Trim();
+                    var expandedIconPath = Environment.ExpandEnvironmentVariables(iconFilePath);
+                    
                     if (File.Exists(expandedIconPath))
                         return expandedIconPath;
                 }
