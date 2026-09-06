@@ -74,24 +74,31 @@ namespace GamesLauncher.Platforms.SyncEngines
                     {
                         var iconPath = line.Replace("IconFile=", "").Trim();
                         // Remplacer les variables d'environnement
-                        return Environment.ExpandEnvironmentVariables(iconPath);
+                        var expandedPath = Environment.ExpandEnvironmentVariables(iconPath);
+                        if (File.Exists(expandedPath))
+                            return expandedPath;
                     }
                 }
             }
             else if (fileInfo.Extension == ".lnk")
             {
-                // D'abord, vérifier s'il y a une IconLocation personnalisée définie
+                // Lire l'IconLocation du raccourci
                 var iconLocation = GetLnkIconLocation(fileInfo.FullName);
-                if (!string.IsNullOrEmpty(iconLocation) && File.Exists(iconLocation))
+                if (!string.IsNullOrEmpty(iconLocation))
                 {
-                    return Environment.ExpandEnvironmentVariables(iconLocation);
+                    // CORRECTION: Remplacer les variables d'environnement AVANT de vérifier si le fichier existe
+                    var expandedIconPath = Environment.ExpandEnvironmentVariables(iconLocation);
+                    if (File.Exists(expandedIconPath))
+                        return expandedIconPath;
                 }
 
-                // Si pas d'IconLocation, extraire l'exécutable cible
+                // Si pas d'IconLocation valide, extraire l'exécutable cible
                 var targetPath = GetLnkTargetPath(fileInfo.FullName);
-                if (!string.IsNullOrEmpty(targetPath) && File.Exists(targetPath))
+                if (!string.IsNullOrEmpty(targetPath))
                 {
-                    return Environment.ExpandEnvironmentVariables(targetPath);
+                    var expandedTargetPath = Environment.ExpandEnvironmentVariables(targetPath);
+                    if (File.Exists(expandedTargetPath))
+                        return expandedTargetPath;
                 }
             }
 
